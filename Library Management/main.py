@@ -1,70 +1,108 @@
-import pandas as pd
+import json
 
 class Library:
-    def __init__(self, filename):
-        self.filename = filename
-        self.books = pd.DataFrame(columns=["Title", "Author", "Genre"])
+    def __init__(self, file_path="library_management.txt"):
+        self.file_path = file_path
+        self.books = self.load_data()
 
-    def add_book(self, title, author, genre):
-        new_book = pd.DataFrame([[title, author, genre]], columns=["Title", "Author", "Genre"])
-        self.books = self.books._append(new_book, ignore_index=True)
+    def load_data(self):
+        try:
+            with open(self.file_path, 'r') as file:
+                data = json.load(file)
+                return data
+        except (FileNotFoundError, json.JSONDecodeError):
+            return []
 
-    def delete_book(self, title):
-        self.books = self.books[self.books["Title"] != title].reset_index(drop=True)
+    def save_data(self):
+        with open(self.file_path, 'w') as file:
+            json.dump(self.books, file, indent=2)
 
-    def search_book(self, title):
-        result = self.books[self.books["Title"] == title]
-        if len(result) > 0:
-            return result
+    def create_book(self, title, author, genre):
+        book_id = len(self.books) + 1
+        book = {
+            'id': book_id,
+            'title': title,
+            'author': author,
+            'genre': genre
+        }
+        self.books.append(book)
+        self.save_data()
+        return f"Book added successfully with ID {book_id}."
+
+    def read_books(self):
+        if not self.books:
+            return "No books in the library."
         else:
-            return None
+            return self.books
 
-    def display_books(self):
-        print(self.books)
+    def update_book(self, book_id, new_title=None, new_author=None, new_genre=None):
+        for book in self.books:
+            if book['id'] == book_id:
+                if new_title:
+                    book['title'] = new_title
+                if new_author:
+                    book['author'] = new_author
+                if new_genre:
+                    book['genre'] = new_genre
+                self.save_data()
+                return f"Book with ID {book_id} updated successfully."
+        return f"Book with ID {book_id} not found."
 
-    def save_to_file(self):
-        self.books.to_excel(self.filename, index=False)
+    def delete_book(self, book_id):
+        for book in self.books:
+            if book['id'] == book_id:
+                self.books.remove(book)
+                self.save_data()
+                return f"Book with ID {book_id} deleted successfully."
+        return f"Book with ID {book_id} not found."
+
+def display_menu():
+    print("Library Management System")
+    print("1. Add a book")
+    print("2. View all books")
+    print("3. Update a book")
+    print("4. Delete a book")
+    print("5. Exit")
+    choice = input("Enter your choice (1-5): ")
+    return choice
 
 def main():
-    library = Library("library.xlsx")
+    library = Library()
 
     while True:
-        print("\nLibrary Management System")
-        print("1. Add Book")
-        print("2. Delete Book")
-        print("3. Search Book")
-        print("4. Display Books")
-        print("5. Save to File")
-        print("6. Exit")
+        choice = display_menu()
 
-        choice = input("Enter your choice: ")
+        if choice == '1':
+            title = input("Enter the title of the book: ")
+            author = input("Enter the author of the book: ")
+            genre = input("Enter the genre of the book: ")
+            print(library.create_book(title, author, genre))
 
-        if choice == "1":
-            title = input("Enter book title: ")
-            author = input("Enter book author: ")
-            genre = input("Enter book genre: ")
-            library.add_book(title, author, genre)
-            print("Book added to library.")
-        elif choice == "2":
-            title = input("Enter book title to delete: ")
-            library.delete_book(title)
-            print("Book deleted from library.")
-        elif choice == "3":
-            title = input("Enter book title to search: ")
-            result = library.search_book(title)
-            if result is not None:
-                print(result)
+        elif choice == '2':
+            books = library.read_books()
+            if isinstance(books, list):
+                for book in books:
+                    print(f"ID: {book['id']}, Title: {book['title']}, Author: {book['author']}, Genre: {book['genre']}")
             else:
-                print("Book not found in library.")
-        elif choice == "4":
-            library.display_books()
-        elif choice == "5":
-            library.save_to_file()
-            print("Library saved to file.")
-        elif choice == "6":
+                print(books)
+
+        elif choice == '3':
+            book_id = int(input("Enter the ID of the book you want to update: "))
+            new_title = input("Enter the new title (press Enter to keep the existing title): ")
+            new_author = input("Enter the new author (press Enter to keep the existing author): ")
+            new_genre = input("Enter the new genre (press Enter to keep the existing genre): ")
+            print(library.update_book(book_id, new_title, new_author, new_genre))
+
+        elif choice == '4':
+            book_id = int(input("Enter the ID of the book you want to delete: "))
+            print(library.delete_book(book_id))
+
+        elif choice == '5':
+            print("Exiting the Library Management System. Goodbye!")
             break
+
         else:
-            print("Invalid choice. Please try again.")
+            print("Invalid choice. Please enter a number between 1 and 5.")
 
 if __name__ == "__main__":
     main()
